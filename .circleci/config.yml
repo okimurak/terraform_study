@@ -1,0 +1,14 @@
+version: 2.1
+executors:
+  test:
+    docker:
+      - image: circleci/python:3.7
+        user: root
+jobs:
+  build:
+    executor:
+      name: test
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 18.03.0-ce
