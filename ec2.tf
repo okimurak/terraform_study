@@ -1,16 +1,23 @@
-resource "aws_s3_bucket" "testtest" {
+/*resource "aws_s3_bucket" "testtest" {
   bucket = "testtesttesttest-test"
   acl    = "private"
-}
+}*/
+
 
 resource "aws_instance" "sandbox" {
-  ami           = "ami-785c491f"
+  ami           = var.amis[var.region]
   instance_type = "t2.micro"
 
-  depends_on = [aws_s3_bucket.testtest]
+  provisioner "local-exec" {
+    command = "echo ${aws_instance.sandbox.public_ip} > ip_address.txt"
+  }
 }
 
 resource "aws_eip" "ip" {
   vpc      = true
   instance = aws_instance.sandbox.id
+}
+
+output "ami" {
+  value = aws_instance.sandbox.ami
 }
