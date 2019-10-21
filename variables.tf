@@ -1,7 +1,5 @@
-variable "region" {}
-
-variable "amis" {
-  type = "map"
+variable "region" {
+  default = "ap-northeast-1"
 }
 
 provider "aws" {
