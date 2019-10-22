@@ -15,7 +15,7 @@ jobs:
       - run:
           name: Validation check by tflint
           command : tflint
-  test:
+  deploy:
     executor:
       name: deployer
     steps:
@@ -25,14 +25,17 @@ jobs:
           command: |
             terraform init
       - run:
-          name: Check Plan
+          name: Deploy
           command: |
-            terraform plan
+            terraform apply -auto-approve
 
 workflows:
   test:
     jobs:
       - validate
-      - test:
+      - deploy:
           requires:
             - validate
+          filters:
+            branches:
+              only: master
