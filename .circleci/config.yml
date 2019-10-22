@@ -2,13 +2,23 @@ version: 2.1
 executors:
   test:
     docker:
-      - image: circleci/python:3.7
-        user: root
+      - image: hashicorp/terraform:light
 jobs:
-  build:
+  test:
     executor:
       name: test
     steps:
       - checkout
-      - setup_remote_docker:
-          version: 18.03.0-ce
+      - run:
+          name: Inittialize
+          command: |
+            terraform init
+      - run:
+          name: Check Plan
+          command: |
+            terraform plan
+
+workflows:
+  test:
+    jobs:
+      - test
