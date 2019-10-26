@@ -1,6 +1,5 @@
-resource "aws_s3_bucket" "terraform_state" {
-  bucket = "studyed-terraform-state1"
-  versioning {
-    enabled = true
-  }
+module "terraform_state" {
+  source   = "./modules/s3"
+  bucket_name = "studyed-terraform-state1"
+  is_versioning = true
 }
