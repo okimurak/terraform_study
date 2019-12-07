@@ -23,3 +23,10 @@ variable "instance_type" {
   type        = string
   default     = "t2.micro"
 }
+
+//--------- Security Group ----------- //
+
+variable "security_group_name" {
+  description = "セキュリティグループの名前"
+  type        = string
+}
