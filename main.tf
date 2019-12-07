@@ -5,9 +5,9 @@ provider "aws" {
 
 terraform {
   backend "s3" {
-    bucket = "studyed-terraform-state1"
+    bucket = "studyed-terraform-state2"
     region = "ap-northeast-1"
-    key = "terraform.tfstate"
+    key = "study/terraform.tfstate"
     encrypt = true
   }
 }
