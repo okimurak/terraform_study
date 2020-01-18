@@ -339,7 +339,7 @@ resource "aws_lb_listener_rule" "example" {
 }
 
 resource "aws_ecs_cluster" "example" {
-  name ="examlpe"
+  name ="example"
 }
 
 resource "aws_ecs_task_definition" "example" {
@@ -349,7 +349,7 @@ resource "aws_ecs_task_definition" "example" {
   network_mode = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   container_definitions = file("./container_definitions.json")
-  execution_role_arn = module.ecs_task_exexution_role.iam_role_arn
+  execution_role_arn = module.ecs_task_execution_role.iam_role_arn
 }
 
 resource "aws_ecs_service" "example" {
@@ -409,9 +409,61 @@ data "aws_iam_policy_document" "ecs_task_execution" {
   }
 }
 
-module "ecs_task_exexution_role" {
+module "ecs_task_execution_role" {
   source = "./modules/iam_role"
   name   = "ecs-task-execution"
   identifier = "ecs-tasks.amazonaws.com"
   policy = data.aws_iam_policy_document.ecs_task_execution.json
+}
+
+
+resource "aws_cloudwatch_log_group" "for_ecs_scheduled_tasks" {
+  name = "/ecs-scheduled-tasks/example"
+  retention_in_days = 180
+}
+
+resource "aws_ecs_task_definition" "example_batch" {
+  family = "example-batch"
+  cpu = "256"
+  memory = "512"
+  network_mode = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  container_definitions = file("./batch_container_definitions.json")
+  execution_role_arn = module.ecs_task_execution_role.iam_role_arn
+}
+
+module "ecs_event_role" {
+  source = "./modules/iam_role"
+  name = "ecs-events"
+  identifier = "events.amazonaws.com"
+  policy = data.aws_iam_policy.ecs_events_role_policy.policy
+}
+
+data "aws_iam_policy" "ecs_events_role_policy" {
+  arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceEventsRole"
+}
+
+resource "aws_cloudwatch_event_rule" "example_batch" {
+  name = "example-batch"
+  description = "Very important batch process."
+  schedule_expression = "cron(*/2 * * * ? *)"
+}
+
+resource "aws_cloudwatch_event_target" "example_batch" {
+  target_id = "example-batch"
+  rule = aws_cloudwatch_event_rule.example_batch.name
+  role_arn = module.ecs_event_role.iam_role_arn
+  arn = aws_ecs_cluster.example.arn
+
+  ecs_target {
+    launch_type = "FARGATE"
+    task_count = 1
+    platform_version = "1.3.0"
+    task_definition_arn = aws_ecs_task_definition.example_batch.arn
+
+    network_configuration {
+      assign_public_ip = "false"
+      subnets = [aws_subnet.private_0.id]
+    }
+  }
 }
