@@ -27,7 +27,7 @@ data "aws_iam_policy_document" "alb_log" {
 
     principals {
       type        = "AWS"
-      identifiers = [var.accountid]
+      identifiers = ["582318560864"] // AWS managed
     }
   }
 }
@@ -187,7 +187,7 @@ resource "aws_lb" "example" {
   load_balancer_type         = "application"
   internal                   = false
   idle_timeout               = 60
-  enable_deletion_protection = true
+  enable_deletion_protection = false
 
   subnets = [
     aws_subnet.public_0.id,
@@ -648,7 +648,7 @@ EOF
 // -------------------- Codebuild ---------------------
 data "aws_iam_policy_document" "codebuild" {
   statement {
-    effect = "Allow"
+    effect    = "Allow"
     resources = ["*"]
 
     actions = [
@@ -675,14 +675,14 @@ data "aws_iam_policy_document" "codebuild" {
 }
 
 module "codebuild_role" {
-  source = "./modules/iam_role"
-  name = "codebuild"
+  source     = "./modules/iam_role"
+  name       = "codebuild"
   identifier = "codebuild.amazonaws.com"
-  policy = data.aws_iam_policy_document.codebuild.json
+  policy     = data.aws_iam_policy_document.codebuild.json
 }
 
 resource "aws_codebuild_project" "example" {
-  name = "example"
+  name         = "example"
   service_role = module.codebuild_role.iam_role_arn
 
   source {
@@ -694,18 +694,17 @@ resource "aws_codebuild_project" "example" {
   }
 
   environment {
-    type = "LINUX_CONTAINER"
-    compute_type = "BUILD_GENERAL1_SMALL"
-    image = "aws/codebuild/ubuntsu-base:14.04"
+    type            = "LINUX_CONTAINER"
+    compute_type    = "BUILD_GENERAL1_SMALL"
+    image           = "aws/codebuild/ubuntsu-base:14.04"
     privileged_mode = true
   }
 }
 
 // -------------------- CodePipeline ---------------------
-
 data "aws_iam_policy_document" "codepipeline" {
   statement {
-    effect = "Allow"
+    effect    = "Allow"
     resources = ["*"]
 
     actions = [
@@ -727,10 +726,10 @@ data "aws_iam_policy_document" "codepipeline" {
 }
 
 module "codepipeline_role" {
-  source = "./modules/iam_role"
-  name   = "codepipeline"
+  source     = "./modules/iam_role"
+  name       = "codepipeline"
   identifier = "codepipeline.amazonaws.com"
-  policy = data.aws_iam_policy_document.codepipeline.json
+  policy     = data.aws_iam_policy_document.codepipeline.json
 }
 
 resource "aws_s3_bucket" "artifact" {
@@ -746,24 +745,24 @@ resource "aws_s3_bucket" "artifact" {
 }
 
 resource "aws_codepipeline" "example" {
-  name = "example"
+  name     = "example"
   role_arn = module.codepipeline_role.iam_role_arn
 
   stage {
     name = "Source"
 
     action {
-      name = "Source"
-      category = "Source"
-      owner = "Thirdparty"
-      provider = "Github"
-      version = 1
+      name             = "Source"
+      category         = "Source"
+      owner            = "ThirdParty"
+      provider         = "GitHub"
+      version          = 1
       output_artifacts = ["Source"]
 
       configuration = {
-        Owner = "okimurak"
-        Repo  = "ecr_sample"
-        Branch = "master"
+        Owner                = "okimurak"
+        Repo                 = "ecr_sample"
+        Branch               = "master"
         PollForSourceChanges = false
       }
     }
@@ -773,12 +772,12 @@ resource "aws_codepipeline" "example" {
     name = "Build"
 
     action {
-      name = "Build"
-      category = "Build"
-      owner = "AWS"
-      provider = "CodeBuild"
-      version = 1
-      input_artifacts = ["Source"]
+      name             = "Build"
+      category         = "Build"
+      owner            = "AWS"
+      provider         = "CodeBuild"
+      version          = 1
+      input_artifacts  = ["Source"]
       output_artifacts = ["Build"]
 
       configuration = {
@@ -791,49 +790,50 @@ resource "aws_codepipeline" "example" {
     name = "Deploy"
 
     action {
-      name = "Deploy"
-      category = "Deploy"
-      owner = "AWS"
-      provider = "ECS"
-      version = 1
+      name            = "Deploy"
+      category        = "Deploy"
+      owner           = "AWS"
+      provider        = "ECS"
+      version         = 1
       input_artifacts = ["Build"]
 
       configuration = {
         ClusterName = aws_ecs_cluster.example.name
         ServiceName = aws_ecs_service.example.name
-        FileName = "imagedefinitions.json"
+        FileName    = "imagedefinitions.json"
       }
     }
   }
 
   artifact_store {
     location = aws_s3_bucket.artifact.id
-    type = "S3"
+    type     = "S3"
   }
 }
 
 resource "aws_codepipeline_webhook" "example" {
-  name = "example"
+  name            = "example"
   target_pipeline = aws_codepipeline.example.name
-  target_action = "Source"
-  authentication = "GITHUB_HMAC"
+  target_action   = "Source"
+  authentication  = "GITHUB_HMAC"
 
   authentication_configuration {
     secret_token = "VeryRandomStringMoreThen20Byte!"
   }
 
   filter {
-    json_path = "$.ref"
+    json_path    = "$.ref"
     match_equals = "refs/heads/{Branch}"
   }
 }
 
+// -------------------- Github ---------------------
 resource "github_repository_webhook" "example" {
   repository = "ecr_sample"
 
   configuration {
-    url = aws_codepipeline_webhook.example.url
-    secret = "VeryRandomStringMoreThen20Byte!"
+    url          = aws_codepipeline_webhook.example.url
+    secret       = "VeryRandomStringMoreThen20Byte!"
     content_type = "json"
     insecure_ssl = false
   }
