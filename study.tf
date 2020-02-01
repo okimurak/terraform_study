@@ -302,11 +302,11 @@ resource "aws_lb_listener" "redirect_http_to_https" {
 }
 
 resource "aws_lb_target_group" "example" {
-  name = "example"
-  vpc_id = aws_vpc.example.id
-  target_type = "ip"
-  port = 80
-  protocol = "HTTP"
+  name                 = "example"
+  vpc_id               = aws_vpc.example.id
+  target_type          = "ip"
+  port                 = 80
+  protocol             = "HTTP"
   deregistration_delay = 300
 
   health_check {
@@ -325,45 +325,47 @@ resource "aws_lb_target_group" "example" {
 
 resource "aws_lb_listener_rule" "example" {
   listener_arn = aws_lb_listener.https.arn
-  priority = 100
+  priority     = 100
 
   action {
-    type = "forward"
+    type             = "forward"
     target_group_arn = aws_lb_target_group.example.arn
   }
 
   condition {
-    field = "path-pattern"
+    field  = "path-pattern"
     values = ["/*"]
   }
 }
 
+// -------------------- ECS ---------------------
+
 resource "aws_ecs_cluster" "example" {
-  name ="example"
+  name = "example"
 }
 
 resource "aws_ecs_task_definition" "example" {
-  family = "example"
-  cpu = "256"
-  memory = "512"
-  network_mode = "awsvpc"
+  family                   = "example"
+  cpu                      = "256"
+  memory                   = "512"
+  network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  container_definitions = file("./container_definitions.json")
-  execution_role_arn = module.ecs_task_execution_role.iam_role_arn
+  container_definitions    = file("./container_definitions.json")
+  execution_role_arn       = module.ecs_task_execution_role.iam_role_arn
 }
 
 resource "aws_ecs_service" "example" {
-  name = "example"
-  cluster = aws_ecs_cluster.example.arn
-  task_definition = aws_ecs_task_definition.example.arn
-  desired_count = 2
-  launch_type = "FARGATE"
-  platform_version = "1.3.0"
+  name                              = "example"
+  cluster                           = aws_ecs_cluster.example.arn
+  task_definition                   = aws_ecs_task_definition.example.arn
+  desired_count                     = 2
+  launch_type                       = "FARGATE"
+  platform_version                  = "1.3.0"
   health_check_grace_period_seconds = 60
 
   network_configuration {
     assign_public_ip = false
-    security_groups = [module.nginx_sg.security_group_id]
+    security_groups  = [module.nginx_sg.security_group_id]
 
     subnets = [
       aws_subnet.private_0.id,
@@ -371,10 +373,10 @@ resource "aws_ecs_service" "example" {
     ]
   }
 
-  load_balancer { 
+  load_balancer {
     target_group_arn = aws_lb_target_group.example.arn
-    container_name = "example"
-    container_port = 80
+    container_name   = "example"
+    container_port   = 80
   }
 
   lifecycle {
@@ -383,15 +385,15 @@ resource "aws_ecs_service" "example" {
 }
 
 module "nginx_sg" {
-  source = "./modules/security_group"
-  name = "ngins-sg"
-  vpc_id = aws_vpc.example.id
-  port = 80
+  source      = "./modules/security_group"
+  name        = "ngins-sg"
+  vpc_id      = aws_vpc.example.id
+  port        = 80
   cidr_blocks = [aws_vpc.example.cidr_block]
 }
 
 resource "aws_cloudwatch_log_group" "for_ecs" {
-  name = "/ecs/example"
+  name              = "/ecs/example"
   retention_in_days = 180
 }
 
@@ -403,40 +405,40 @@ data "aws_iam_policy_document" "ecs_task_execution" {
   source_json = data.aws_iam_policy.ecs_task_execution_role_policy.policy
 
   statement {
-    effect = "Allow"
-    actions = ["ssm:getParameters", "kms:Decrypt"]
+    effect    = "Allow"
+    actions   = ["ssm:getParameters", "kms:Decrypt"]
     resources = ["*"]
   }
 }
 
 module "ecs_task_execution_role" {
-  source = "./modules/iam_role"
-  name   = "ecs-task-execution"
+  source     = "./modules/iam_role"
+  name       = "ecs-task-execution"
   identifier = "ecs-tasks.amazonaws.com"
-  policy = data.aws_iam_policy_document.ecs_task_execution.json
+  policy     = data.aws_iam_policy_document.ecs_task_execution.json
 }
 
 
 resource "aws_cloudwatch_log_group" "for_ecs_scheduled_tasks" {
-  name = "/ecs-scheduled-tasks/example"
+  name              = "/ecs-scheduled-tasks/example"
   retention_in_days = 180
 }
 
 resource "aws_ecs_task_definition" "example_batch" {
-  family = "example-batch"
-  cpu = "256"
-  memory = "512"
-  network_mode = "awsvpc"
+  family                   = "example-batch"
+  cpu                      = "256"
+  memory                   = "512"
+  network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  container_definitions = file("./batch_container_definitions.json")
-  execution_role_arn = module.ecs_task_execution_role.iam_role_arn
+  container_definitions    = file("./batch_container_definitions.json")
+  execution_role_arn       = module.ecs_task_execution_role.iam_role_arn
 }
 
 module "ecs_event_role" {
-  source = "./modules/iam_role"
-  name = "ecs-events"
+  source     = "./modules/iam_role"
+  name       = "ecs-events"
   identifier = "events.amazonaws.com"
-  policy = data.aws_iam_policy.ecs_events_role_policy.policy
+  policy     = data.aws_iam_policy.ecs_events_role_policy.policy
 }
 
 data "aws_iam_policy" "ecs_events_role_policy" {
@@ -444,26 +446,171 @@ data "aws_iam_policy" "ecs_events_role_policy" {
 }
 
 resource "aws_cloudwatch_event_rule" "example_batch" {
-  name = "example-batch"
-  description = "Very important batch process."
+  name                = "example-batch"
+  description         = "Very important batch process."
   schedule_expression = "cron(*/2 * * * ? *)"
 }
 
 resource "aws_cloudwatch_event_target" "example_batch" {
   target_id = "example-batch"
-  rule = aws_cloudwatch_event_rule.example_batch.name
-  role_arn = module.ecs_event_role.iam_role_arn
-  arn = aws_ecs_cluster.example.arn
+  rule      = aws_cloudwatch_event_rule.example_batch.name
+  role_arn  = module.ecs_event_role.iam_role_arn
+  arn       = aws_ecs_cluster.example.arn
 
   ecs_target {
-    launch_type = "FARGATE"
-    task_count = 1
-    platform_version = "1.3.0"
+    launch_type         = "FARGATE"
+    task_count          = 1
+    platform_version    = "1.3.0"
     task_definition_arn = aws_ecs_task_definition.example_batch.arn
 
     network_configuration {
       assign_public_ip = "false"
-      subnets = [aws_subnet.private_0.id]
+      subnets          = [aws_subnet.private_0.id]
     }
   }
+}
+
+// -------------------- SSM ---------------------
+
+resource "aws_ssm_parameter" "db_username" {
+  name        = "/db/username"
+  value       = "root"
+  type        = "String"
+  description = "User of DB"
+}
+
+resource "aws_ssm_parameter" "db_password" {
+  name        = "/db/password"
+  value       = "uninitialized"
+  type        = "SecureString"
+  description = "Password of DB"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+// -------------------- KMS ---------------------
+
+resource "aws_kms_key" "example" {
+  description             = "Example Custormer Master Key"
+  enable_key_rotation     = true
+  is_enabled              = true
+  deletion_window_in_days = 30
+}
+
+resource "aws_kms_alias" "example" {
+  name          = "alias/example"
+  target_key_id = aws_kms_key.example.key_id
+}
+
+// -------------------- RDS ---------------------
+
+resource "aws_db_parameter_group" "example" {
+  name   = "example"
+  family = "mysql5.7"
+
+  parameter {
+    name  = "character_set_database"
+    value = "utf8mb4"
+  }
+
+  parameter {
+    name  = "character_set_server"
+    value = "utf8mb4"
+  }
+}
+
+resource "aws_db_option_group" "example" {
+  name                 = "example"
+  engine_name          = "mysql"
+  major_engine_version = "5.7"
+
+  option {
+    option_name = "MARIADB_AUDIT_PLUGIN"
+  }
+}
+
+resource "aws_db_subnet_group" "example" {
+  name       = "example"
+  subnet_ids = [aws_subnet.private_0.id, aws_subnet.private_1.id]
+}
+
+resource "aws_db_instance" "example" {
+  identifier        = "example"
+  engine            = "mysql"
+  engine_version    = "5.7.23"
+  instance_class    = "db.t2.micro"
+  allocated_storage = 20
+  storage_type      = "gp2"
+  storage_encrypted = false
+  #kms_key_id                 = aws_kms_key.example.arn
+  username                   = "admin"
+  password                   = "VeryStrongPassword!"
+  multi_az                   = true
+  publicly_accessible        = false
+  backup_window              = "09:10-09:40"
+  backup_retention_period    = 30
+  maintenance_window         = "mon:10:10-mon:10:40"
+  auto_minor_version_upgrade = false
+  deletion_protection        = false
+  skip_final_snapshot        = true
+  port                       = 3306
+  apply_immediately          = false
+  vpc_security_group_ids     = [module.mysql_sg.security_group_id]
+  parameter_group_name       = aws_db_parameter_group.example.name
+  option_group_name          = aws_db_option_group.example.name
+  db_subnet_group_name       = aws_db_subnet_group.example.name
+
+  lifecycle {
+    ignore_changes = [password]
+  }
+}
+
+module "mysql_sg" {
+  source      = "./modules/security_group"
+  name        = "mysql-sg"
+  vpc_id      = aws_vpc.example.id
+  port        = 3306
+  cidr_blocks = [aws_vpc.example.cidr_block]
+}
+
+resource "aws_elasticache_parameter_group" "example" {
+  name   = "example"
+  family = "redis5.0"
+  parameter {
+    name  = "cluster-enabled"
+    value = "no"
+  }
+}
+
+resource "aws_elasticache_subnet_group" "example" {
+  name       = "example"
+  subnet_ids = [aws_subnet.private_0.id, aws_subnet.private_1.id]
+}
+
+resource "aws_elasticache_replication_group" "example" {
+  replication_group_id          = "example"
+  replication_group_description = "Cluster Disabled"
+  engine                        = "redis"
+  engine_version                = "5.0.3"
+  number_cache_clusters         = 3
+  node_type                     = "cache.t2.micro"
+  snapshot_window               = "09:10-10:10"
+  snapshot_retention_limit      = 7
+  maintenance_window            = "mon:10:40-mon:11:40"
+  automatic_failover_enabled    = true
+  port                          = 6379
+  apply_immediately             = false
+  security_group_ids            = [module.redis_sg.security_group_id]
+  parameter_group_name          = aws_elasticache_parameter_group.example.name
+  subnet_group_name             = aws_elasticache_subnet_group.example.name
+}
+
+module "redis_sg" {
+  source      = "./modules/security_group"
+  name        = "redis-sg"
+  vpc_id      = aws_vpc.example.id
+  port        = 6379
+  cidr_blocks = [aws_vpc.example.cidr_block]
 }
