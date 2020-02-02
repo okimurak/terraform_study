@@ -11,7 +11,3 @@ terraform {
     encrypt = true
   }
 }
-
-provider "github" {
-  organization = "okimurak"
-}
